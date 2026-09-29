@@ -1,0 +1,184 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'io.spring.gradle:dependency-management-plugin:1.0.8.RELEASE'
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:2.2.0.RELEASE"
+    }
+}
+
+plugins {
+    id 'org.springframework.boot' version '2.2.0.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+    id 'java'
+    id 'checkstyle'
+    id 'jacoco'
+    id 'pmd'
+
+    id 'maven'
+    id 'signing'
+}
+
+ext {
+    ossrhUsername = System.getenv("OSSRH_USERNAME")
+    ossrhPassword = System.getenv("OSSRH_PASSWORD")
+}
+ext.set("signing.secretKeyRingFile", ".signing/secring.gpg")
+ext.set("signing.keyId", System.getenv("SIGNING_KEYID"))
+ext.set("signing.password", System.getenv("SIGNING_PASSWORD"))
+
+group = serviceGroup
+version = serviceVersion
+archivesBaseName = serviceName
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url "http://jaspersoft.artifactoryonline.com/jaspersoft/third-party-ce-artifacts/" }
+    maven { url "http://jasperreports.sourceforge.net/maven2/" }
+    maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
+    maven { url "https://central.sonatype.com/repository/maven-releases/" }
+}
+
+dependencies {
+    compileOnly "org.openlmis:openlmis-fulfillment:${fulfillmentVersion}:exec"
+    compileOnly "org.projectlombok:lombok:1.18.22"
+    annotationProcessor "org.projectlombok:lombok:1.18.22"
+
+    testImplementation "org.openlmis:openlmis-fulfillment:${fulfillmentVersion}:exec"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testImplementation "junit:junit"
+    testCompileOnly "org.projectlombok:lombok:1.18.22"
+    testAnnotationProcessor "org.projectlombok:lombok:1.18.22"
+}
+
+bootJar {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}
+
+checkstyle {
+    toolVersion = "7.1"
+}
+
+pmd {
+    toolVersion = '5.4.0'
+    consoleOutput= true
+    ignoreFailures = false
+    ruleSetFiles = files("config/pmd/ruleset.xml")
+    reportsDir = file("build/reports/pmd")
+}
+
+tasks.withType(Pmd){
+    reports {
+        xml.enabled true
+        html.enabled true
+    }
+}
+
+jacocoTestReport {
+    group = "reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    reports {
+        xml.enabled false
+        html.enabled true
+        csv.enabled false
+    }
+
+  additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
+}
+
+signing {
+    sign configurations.archives
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+signArchives.onlyIf {project.getProperty("signing.keyId") && project.getProperty("signing.password")}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://central.sonatype.com/repository/maven-releases/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            snapshotRepository(url: "https://central.sonatype.com/repository/maven-snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            pom.project {
+                name projectName
+                packaging 'jar'
+                description projectDescription
+                url = 'https://github.com/OpenLMIS-RDC/rdc-fulfillment-extension'
+
+                licenses {
+                    license {
+                        name 'GNU Affero General Public License, Version 3'
+                        url 'https://www.gnu.org/licenses/agpl-3.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'techcommittee'
+                        name = 'tech committee'
+                        email = 'info@openlmis.org'
+                        organizationUrl = 'https://villagereach.org'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/OpenLMIS-RDC/rdc-fulfillment-extension'
+                    developerConnection = 'scm:git:ssh://github.com/OpenLMIS-RDC/rdc-fulfillment-extension'
+                    url = 'https://github.com/OpenLMIS-RDC/rdc-fulfillment-extension'
+                }
+            }
+        }
+    }
+}
+uploadArchives.onlyIf { project.getProperty("ossrhUsername") && project.getProperty("ossrhPassword") }
+
+assemble {
+    finalizedBy uploadArchives
+}
+
+// Usage: gradle generateExtensionMigration [-PmigrationName=name_of_migration]
+//          Defaults to 'migration' as migration name
+// Example: gradle generateExtensionMigration -PmigrationName=create_order_sequence
+//          Will create a file in db/extension folder with name yyyyMMddHHmmssSSS__create_order_sequence.sql.
+task generateExtensionMigration {
+    description 'Creates an empty new file within the src/main/resources/db/extension directory into which extension developers can add new SQL migration code.'
+    doLast {
+        def fileName = project.hasProperty('migrationName') ? migrationName : 'migration'
+        def timestamp = new Date().format('yyyyMMddHHmmssSSS', TimeZone.getTimeZone('GMT'))
+        def fullFileName = "${timestamp}__${fileName}.sql"
+        def migrationDir = new File(sourceSets.main.resources.srcDirs.first(), 'db/extension')
+        migrationDir.mkdirs()
+        def migrationFile = new File(migrationDir, fullFileName)
+        migrationFile << "-- WHEN COMMITTING OR REVIEWING THIS FILE: Make sure that the timestamp in the file name (that serves as a version) is the latest timestamp, and that no new migration have been added in the meanwhile.\n"
+        migrationFile << "-- Adding migrations out of order may cause this migration to never execute or behave in an unexpected way.\n"
+        migrationFile << "-- Migrations should NOT BE EDITED. Add a new migration to apply changes."
+        migrationFile.createNewFile()
+    }
+}
