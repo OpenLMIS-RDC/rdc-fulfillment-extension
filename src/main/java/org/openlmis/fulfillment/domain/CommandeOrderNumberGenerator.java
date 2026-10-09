@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Generates order numbers in the {@code COMMANDE-yyyyMMdd-PROGRAM_CODE-SEQUENCE} format,
- * e.g. {@code COMMANDE-20260928-VAR-0001}. The sequence is kept per supplying facility and
+ * Generates order numbers in the {@code COMMANDE-ddMMyyyy-PROGRAM_CODE-SEQUENCE} format,
+ * e.g. {@code COMMANDE-28092026-VAR-0001}. The sequence is kept per supplying facility and
  * program and starts again from 1 every month. The date is taken in the service time zone
  * ({@code TIME_ZONE_ID}).
  */
@@ -37,7 +37,7 @@ public class CommandeOrderNumberGenerator implements OrderNumberGenerator {
 
   static final String PREFIX = "COMMANDE";
   private static final String SEPARATOR = "-";
-  private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
+  private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("ddMMyyyy");
 
   @Autowired
   private OrderNumberSequenceRepository orderNumberSequenceRepository;

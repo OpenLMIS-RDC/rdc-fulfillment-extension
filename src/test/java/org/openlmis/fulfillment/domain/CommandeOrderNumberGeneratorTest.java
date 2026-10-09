@@ -76,7 +76,7 @@ public class CommandeOrderNumberGeneratorTest {
     when(orderNumberSequenceRepository.getNextSequenceValue(supplyingFacilityId, programId,
         2026, 9)).thenReturn(1);
 
-    assertEquals("COMMANDE-20260928-VAR-0001", generator.generate(order));
+    assertEquals("COMMANDE-28092026-VAR-0001", generator.generate(order));
   }
 
   @Test
@@ -84,7 +84,7 @@ public class CommandeOrderNumberGeneratorTest {
     when(orderNumberSequenceRepository.getNextSequenceValue(supplyingFacilityId, programId,
         2026, 9)).thenReturn(42);
 
-    assertEquals("COMMANDE-20260928-VAR-0042", generator.generate(order));
+    assertEquals("COMMANDE-28092026-VAR-0042", generator.generate(order));
   }
 
   @Test
@@ -92,7 +92,7 @@ public class CommandeOrderNumberGeneratorTest {
     when(orderNumberSequenceRepository.getNextSequenceValue(supplyingFacilityId, programId,
         2026, 9)).thenReturn(10000);
 
-    assertEquals("COMMANDE-20260928-VAR-10000", generator.generate(order));
+    assertEquals("COMMANDE-28092026-VAR-10000", generator.generate(order));
   }
 
   @Test
@@ -101,7 +101,7 @@ public class CommandeOrderNumberGeneratorTest {
     when(orderNumberSequenceRepository.getNextSequenceValue(supplyingFacilityId, programId,
         2027, 1)).thenReturn(1);
 
-    assertEquals("COMMANDE-20270105-VAR-0001", generator.generate(order));
+    assertEquals("COMMANDE-05012027-VAR-0001", generator.generate(order));
   }
 
   @Test(expected = OrderNumberException.class)
