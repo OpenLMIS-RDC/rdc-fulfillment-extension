@@ -1,4 +1,4 @@
 #!/bin/sh
 
-# Assemble (and publish) the jar
-gradle assemble
+# Build the jar, run the tests and the code analysis
+gradle clean build

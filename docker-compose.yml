@@ -9,6 +9,9 @@ services:
       - './build.sh'
     environment:
       GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+  image:
+    build: .
+    image: openlmisrdc/fulfillment-extension
 volumes:
   gradlecache:
     external: false

@@ -1,7 +1,7 @@
 # OpenLMIS RDC Fulfillment Extension Module
 This is the OpenLMIS 3.x Fulfillment Extension Module for the RDC (Democratic Republic of Congo) implementation.
-It replaces the default order number generation with the `COMMANDE-yyyyMMdd-PROGRAM_CODE-SEQUENCE` format,
-e.g. `COMMANDE-20260928-VAR-0001`.
+It replaces the default order number generation with the `COMMANDE-ddMMyyyy-PROGRAM_CODE-SEQUENCE` format,
+e.g. `COMMANDE-28092026-VAR-0001`.
 
 ## Prerequisites
 * Docker 1.11+
@@ -18,14 +18,16 @@ e.g. `COMMANDE-20260928-VAR-0001`.
  ```shell
  git clone https://github.com/OpenLMIS/openlmis-fulfillment.git
  ```
-3. To assemble the outputs of project and create jar file run `docker-compose -f docker-compose.yml run builder`.
-4. Add the extension to the `extensions.properties` configuration file used by the RDC deployment:
+3. To build the jar, run the tests and the code analysis run `docker compose run --rm builder`.
+4. To build the `openlmisrdc/fulfillment-extension` image run `docker compose build image`. The image contains the
+   extension jar and the `extensions.properties` configuration file from this repository:
 
  ```
  OrderNumberGenerator=CommandeOrderNumberGenerator
  ```
-5. Place the extension jar and the `extensions.properties` file in the `/extensions` directory of the fulfillment
-   service container (see `rdc-deployment`).
+5. In the RDC deployment (`rdc-deployment`), run the image as a one-off service that copies both files into a volume,
+   and mount the same volume as `/extensions` in the fulfillment service. The fulfillment service has to wait until
+   the copy finishes (`condition: service_completed_successfully`).
 6. Start the fulfillment service and create an order to check if your changes have been applied.
 
 ## <a name="extensions"></a> Example of extensions usage
@@ -53,7 +55,7 @@ Spring Bean defined in `CommandeOrderNumberGenerator.java`.
 The mapping is required whenever the extension jar is on the fulfillment classpath. Without it, the service finds two
 `OrderNumberGenerator` implementations and order creation fails.
 
-Configuration file lives in the deployment, not in this repository. Every extension module should be deployed as JAR.
+Configuration file lives in this repository and is shipped together with the extension jar in the Docker image.
 
 Following classes are example of extension points usage:
 
@@ -64,7 +66,7 @@ Following classes are example of extension points usage:
 - **CommandeOrderNumberGenerator.java** - class implementing OrderNumberGenerator interface from openlmis-fulfillment
     repository. It has `@Component` annotation that contains its Id. It builds the order number from:
     - `COMMANDE` prefix,
-    - the current date (`yyyyMMdd`) in the service time zone (`TIME_ZONE_ID`),
+    - the current date in French format (`ddMMyyyy`) in the service time zone (`TIME_ZONE_ID`),
     - the program code,
     - a sequence kept per supplying facility and program, padded to 4 digits and reset every month.
 - **OrderNumberSequenceRepository.java** - returns the next sequence value, using a PostgreSQL upsert on the
