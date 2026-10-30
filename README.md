@@ -1,7 +1,7 @@
 # OpenLMIS RDC Fulfillment Extension Module
 This is the OpenLMIS 3.x Fulfillment Extension Module for the RDC (Democratic Republic of Congo) implementation.
-It replaces the default order number generation with the `COMMANDE-ddMMyyyy-PROGRAM_CODE-SEQUENCE` format,
-e.g. `COMMANDE-28092026-VAR-0001`.
+It replaces the default order number generation with the `COMMANDE-ddMMyyyy-FACILITY_CODE-PROGRAM_CODE-SEQUENCE`
+format, e.g. `COMMANDE-28092026-HC01-VAR-0001`.
 
 ## Prerequisites
 * Docker 1.11+
@@ -67,6 +67,7 @@ Following classes are example of extension points usage:
     repository. It has `@Component` annotation that contains its Id. It builds the order number from:
     - `COMMANDE` prefix,
     - the current date in French format (`ddMMyyyy`) in the service time zone (`TIME_ZONE_ID`),
+    - the supplying facility code,
     - the program code,
     - a sequence kept per supplying facility and program, padded to 4 digits and reset every month.
 - **OrderNumberSequenceRepository.java** - returns the next sequence value, using a PostgreSQL upsert on the

@@ -20,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import org.openlmis.fulfillment.extension.point.OrderNumberGenerator;
 import org.openlmis.fulfillment.repository.OrderNumberSequenceRepository;
+import org.openlmis.fulfillment.service.referencedata.FacilityDto;
+import org.openlmis.fulfillment.service.referencedata.FacilityReferenceDataService;
 import org.openlmis.fulfillment.service.referencedata.ProgramDto;
 import org.openlmis.fulfillment.service.referencedata.ProgramReferenceDataService;
 import org.openlmis.fulfillment.util.DateHelper;
@@ -27,8 +29,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Generates order numbers in the {@code COMMANDE-ddMMyyyy-PROGRAM_CODE-SEQUENCE} format,
- * e.g. {@code COMMANDE-28092026-VAR-0001}. The sequence is kept per supplying facility and
+ * Generates order numbers in the {@code COMMANDE-ddMMyyyy-FACILITY_CODE-PROGRAM_CODE-SEQUENCE}
+ * format, e.g. {@code COMMANDE-28092026-HC01-VAR-0001}. The facility code is the code of the
+ * supplying facility. The sequence is kept per supplying facility and
  * program and starts again from 1 every month. The date is taken in the service time zone
  * ({@code TIME_ZONE_ID}).
  */
@@ -43,6 +46,9 @@ public class CommandeOrderNumberGenerator implements OrderNumberGenerator {
   private OrderNumberSequenceRepository orderNumberSequenceRepository;
 
   @Autowired
+  private FacilityReferenceDataService facilityReferenceDataService;
+
+  @Autowired
   private ProgramReferenceDataService programReferenceDataService;
 
   @Autowired
@@ -55,14 +61,24 @@ public class CommandeOrderNumberGenerator implements OrderNumberGenerator {
       throw new OrderNumberException("Order must have a supplying facility");
     }
 
+    FacilityDto facility = findFacility(supplyingFacilityId);
     ProgramDto program = findProgram(order.getProgramId());
     LocalDate today = dateHelper.getCurrentDate();
 
     int sequenceValue = orderNumberSequenceRepository.getNextSequenceValue(
         supplyingFacilityId, order.getProgramId(), today.getYear(), today.getMonthValue());
 
-    return String.join(SEPARATOR, PREFIX, today.format(DATE_FORMAT), program.getCode(),
-        String.format("%04d", sequenceValue));
+    return String.join(SEPARATOR, PREFIX, today.format(DATE_FORMAT), facility.getCode(),
+        program.getCode(), String.format("%04d", sequenceValue));
+  }
+
+  private FacilityDto findFacility(UUID facilityId) {
+    FacilityDto facility = facilityReferenceDataService.findOne(facilityId);
+
+    if (facility == null) {
+      throw new OrderNumberException("Facility not found: " + facilityId);
+    }
+    return facility;
   }
 
   private ProgramDto findProgram(UUID programId) {
